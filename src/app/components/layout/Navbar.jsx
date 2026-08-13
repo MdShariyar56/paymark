@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { ShoppingCart, Sparkle, Menu, X } from "lucide-react";
 
 const NAV_LINKS = [
@@ -12,59 +12,99 @@ const NAV_LINKS = [
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
 
+  // Scroll lock (Next.js safe)
   useEffect(() => {
-    document.body.style.overflow = isOpen ? "hidden" : "";
+    document.body.style.overflow = isOpen ? "hidden" : "auto";
     return () => {
-      document.body.style.overflow = "";
+      document.body.style.overflow = "auto";
     };
   }, [isOpen]);
 
+  // Close drawer on Escape
+  useEffect(() => {
+    const onKey = (e) => e.key === "Escape" && setIsOpen(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  // Shadow / shrink effect on scroll
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  const close = useCallback(() => setIsOpen(false), []);
+
   return (
     <header
-      className="sticky top-0 z-50 w-full border-b border-black/10"
+      className={`sticky top-0 z-50 w-full border-b transition-all duration-500 ease-out ${
+        scrolled
+          ? "border-black/10 shadow-[0_8px_30px_rgba(0,0,0,0.25)]"
+          : "border-transparent shadow-none"
+      }`}
       style={{
         background:
           "linear-gradient(115deg, #e9c9c4 0%, #d3a8a6 12%, #9c6b74 28%, #5f3a48 45%, #2c1620 62%, #0d0709 80%, #050304 100%)",
+        backgroundSize: "140% 140%",
       }}
     >
-      <nav className="mx-auto flex max-w-8xl items-center justify-between px-5 py-4 sm:px-8">
-        <a href="#home" className="flex items-center gap-2 shrink-0">
-          <Sparkle className="h-5 w-5 fill-black text-black" strokeWidth={0} />
+      <nav
+        className={`mx-auto flex max-w-8xl items-center justify-between px-5 transition-all duration-500 ease-out sm:px-8 ${
+          scrolled ? "py-3" : "py-4"
+        }`}
+      >
+        {/* Logo */}
+        <a
+          href="#home"
+          className="group flex shrink-0 items-center gap-2 transition-transform duration-300 hover:scale-[1.03]"
+        >
+          <Sparkle
+            className="h-5 w-5 fill-black text-black transition-transform duration-500 group-hover:rotate-45"
+            strokeWidth={0}
+          />
           <span className="text-[17px] font-bold tracking-wide text-black">
             PAYMARK
           </span>
         </a>
 
         {/* Desktop links */}
-        <ul className="hidden md:flex items-center gap-10">
+        <ul className="hidden items-center gap-10 md:flex">
           {NAV_LINKS.map((link) => (
             <li key={link.label}>
               <a
                 href={link.href}
-                className="text-[14.5px] font-medium text-white/85 transition-colors duration-200 hover:text-white"
+                className="group relative text-[14.5px] font-medium text-white/85 transition-colors duration-300 hover:text-white"
               >
                 {link.label}
+                <span className="absolute -bottom-1 left-0 h-[1.5px] w-0 bg-white transition-all duration-300 ease-out group-hover:w-full" />
               </a>
             </li>
           ))}
         </ul>
 
-        <div className="hidden md:flex items-center gap-6">
-          <button aria-label="View cart" className="text-white/85 transition-colors duration-200 hover:text-white">
-            <ShoppingCart className="h-[19px] w-[19px]" strokeWidth={1.8} />
+        {/* Desktop actions */}
+        <div className="hidden items-center gap-6 md:flex">
+          <button
+            aria-label="Cart"
+            className="relative text-white/85 transition-all duration-300 hover:scale-110 hover:text-white"
+          >
+            <ShoppingCart className="h-[19px] w-[19px]" />
           </button>
 
           <a
             href="#login"
-            className="text-[14.5px] font-medium text-white/85 transition-colors duration-200 hover:text-white"
+            className="text-white/85 transition-colors duration-300 hover:text-white"
           >
             Login
           </a>
 
           <a
             href="#open-account"
-            className="rounded-full bg-white px-5 py-2.5 text-[14px] font-semibold text-black transition-transform duration-200 hover:scale-[1.03] active:scale-[0.98]"
+            className="rounded-full bg-white px-5 py-2.5 font-semibold text-black shadow-sm transition-all duration-300 hover:scale-[1.04] hover:shadow-lg active:scale-[0.98]"
           >
             Open Account
           </a>
@@ -72,50 +112,86 @@ export default function Navbar() {
 
         {/* Mobile toggle */}
         <button
-          aria-label={isOpen ? "Close menu" : "Open menu"}
-          onClick={() => setIsOpen((v) => !v)}
-          className="md:hidden flex items-center justify-center h-9 w-9 rounded-lg text-white hover:bg-white/10 transition-colors duration-200"
+          onClick={() => setIsOpen(true)}
+          aria-label="Open menu"
+          className="text-white transition-transform duration-300 hover:scale-110 md:hidden"
         >
-          {isOpen ? <X className="h-[22px] w-[22px]" /> : <Menu className="h-[22px] w-[22px]" />}
+          <Menu />
         </button>
       </nav>
 
-      {/* Mobile menu */}
+      {/* ================= MOBILE DRAWER ================= */}
       <div
-        className={`md:hidden overflow-hidden transition-all duration-300 ease-in-out ${
-          isOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
+        className={`fixed inset-0 z-50 md:hidden ${
+          isOpen ? "pointer-events-auto" : "pointer-events-none"
         }`}
-        style={{ background: "#0d0709" }}
+        aria-hidden={!isOpen}
       >
-        <div className="flex flex-col gap-1 px-5 py-4">
-          {NAV_LINKS.map((link) => (
+        {/* overlay */}
+        <div
+          onClick={close}
+          className={`absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-500 ease-out ${
+            isOpen ? "opacity-100" : "opacity-0"
+          }`}
+        />
+
+        {/* drawer */}
+        <div
+          className={`absolute right-0 top-0 flex h-full w-[80%] max-w-sm flex-col bg-[#0d0709] p-5 shadow-2xl transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${
+            isOpen ? "translate-x-0" : "translate-x-full"
+          }`}
+        >
+          <button
+            onClick={close}
+            aria-label="Close menu"
+            className="mb-6 self-end text-white transition-transform duration-300 hover:scale-110 hover:rotate-90"
+          >
+            <X />
+          </button>
+
+          <div className="flex flex-col gap-2">
+            {NAV_LINKS.map((link, i) => (
+              <a
+                key={link.label}
+                href={link.href}
+                onClick={close}
+                className="rounded-lg p-3 text-white/90 transition-all duration-300 ease-out hover:translate-x-1 hover:bg-white/10"
+                style={{
+                  transitionDelay: isOpen ? `${i * 60 + 100}ms` : "0ms",
+                  opacity: isOpen ? 1 : 0,
+                  transform: isOpen ? "translateX(0)" : "translateX(12px)",
+                }}
+              >
+                {link.label}
+              </a>
+            ))}
+
             <a
-              key={link.label}
-              href={link.href}
-              onClick={() => setIsOpen(false)}
-              className="rounded-lg px-3 py-3 text-[15px] font-medium text-white/90 hover:bg-white/5 transition-colors duration-200"
+              href="#login"
+              onClick={close}
+              className="p-3 text-white/90 transition-all duration-300 hover:translate-x-1"
+              style={{
+                transitionDelay: isOpen ? "340ms" : "0ms",
+                opacity: isOpen ? 1 : 0,
+                transform: isOpen ? "translateX(0)" : "translateX(12px)",
+              }}
             >
-              {link.label}
+              Login
             </a>
-          ))}
 
-          <div className="my-2 h-px bg-white/10" />
-
-          <a
-            href="#login"
-            onClick={() => setIsOpen(false)}
-            className="flex items-center gap-2 rounded-lg px-3 py-3 text-[15px] font-medium text-white/90 hover:bg-white/5 transition-colors duration-200"
-          >
-            <ShoppingCart className="h-4 w-4" /> Login
-          </a>
-
-          <a
-            href="#open-account"
-            onClick={() => setIsOpen(false)}
-            className="mt-2 flex items-center justify-center rounded-full bg-white px-5 py-3 text-[15px] font-semibold text-black transition-transform duration-200 active:scale-[0.98]"
-          >
-            Open Account
-          </a>
+            <a
+              href="#open-account"
+              onClick={close}
+              className="mt-2 rounded-full bg-white p-3 text-center font-semibold text-black transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
+              style={{
+                transitionDelay: isOpen ? "400ms" : "0ms",
+                opacity: isOpen ? 1 : 0,
+                transform: isOpen ? "translateY(0)" : "translateY(8px)",
+              }}
+            >
+              Open Account
+            </a>
+          </div>
         </div>
       </div>
     </header>

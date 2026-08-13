@@ -1,9 +1,12 @@
 import React from 'react';
+import Hero from './components/sections/Hero';
+import LogoMarquee from './components/sections/LogoMarque/LogoMarquee';
 
 const page = () => {
   return (
     <div>
-      HI paymark Webside
+      <Hero></Hero>
+      <LogoMarquee/>
     </div>
   );
 };
